@@ -32,7 +32,7 @@ class Course(models.Model):
         ordering= ['-created']
         
     def __str__(self):
-        return f'{self.order}. {self.title}'
+        return self.title
     
     
 class Module(models.Model):
@@ -45,7 +45,7 @@ class Module(models.Model):
         ordering=['order']
     
     def __str__(self):
-        return self.title
+        return f'{self.order}. {self.title}'
     
     
     
@@ -71,6 +71,8 @@ class Content(models.Model):
         'object_id')       
     order=OrderField(blank=True, for_fields=['module'])
     
+    class Meta:
+        ordering=['order']
 
 class ItemBase(models.Model):
     owner=models.ForeignKey(User, 
