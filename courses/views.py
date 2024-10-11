@@ -18,9 +18,73 @@ from django.forms.models import modelform_factory
 
 
 
+class ContentCreateUpdateView(TemplateResponseMixin, View):
+    module=None 
+    model=None 
+    obj=None 
+    
+    template_name='courses/manage/content/form.html'
+    
+    def get_model(self, model_name):
+        if model_name in ['text', 'image', 'file']:
+            return apps.get_model(
+                app_label='courses', model_name=model_name
+                )
+            
+        return None
+    
+def get_form(self, model, *args, **kwargs):
+    Form=modelform_factory(
+        model, exclude=['owner', 'order', 'created', 'updated']
+    )
+    
+    return Form(*args, **kwargs)
 
+
+def dispatch(self, request, module_id, module_name, id=None):
+    self.module=get_object_or_404(
+        Module, id=module_id, course__owner=request.user)    
+    self.module.dispatch(request, module_name)
+    if id:
+        self.obj=get_object_or_404(
+            self.model, id=id, owner=request.user
+        )
+    return super().dispatch(request, module_id, module_name, id)
  
+def get(self, request, module_id, module_name, id=None):
+     form=self.get_form(self.model, instance=self.obj)
+     return self.render_to_response(
+         {'form':form, 'object':self.obj}
+     )
+ 
+ 
+ 
+ 
+def post(self, request, module_id, module_name, id=None):
+     form=self.get_form(
+         
+         self.model, 
+         instance=self.obj,
+         data=request.POST,
+         files=request.FILES
+         
+         )
+     if form.is_valid():
+         obj=form.save(commit=False)
+         obj.owner=request.user
+         obj.save()
+         
+         if not id:
+             Content.objects.create(module=self.module, item=obj)
+         return redirect('module_content_list', self.module.id)
+     return self.render_to_response(
+         {'form':form, 'object':self.obj}
+     )
+             
+   
 # Create your views here.
+
+
 class CourseModuleUpdateView(TemplateResponseMixin, View):
     template_name='courses/manage/module/formset.html'
     course=None 
@@ -102,5 +166,27 @@ class CourseDeleteView(OwnerCourseEditMixin, UpdateView):
         return qs.filter(owner=self.request.user)
     
     
+class ContentDeleteView(View):
+    def post(self, request, id):
+        content = get_object_or_404(
+            Content, id=id, module_course_owner=request.user
+        )
+        module=content.module 
+        content.item.delete()
+        content.delete()
+        return redirect('module_content_list', module.id)
+    
+    
+class ModuleContentListView(TemplateResponseMixin, View):
+    template_name='courses/manage/module/content_list.html'
+    
+    
+    
+    def get(self, request, module_id):
+        module=get_object_or_404(
+            Module, id=module_id, course__owner=request.user
+        )
+        
+        return self.render_to_response({'module':module})
     
     
